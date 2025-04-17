@@ -5,6 +5,8 @@ import (
 	"fmt"
 	"log/slog"
 	"net"
+
+	"github.com/bducha/mbwol/grub"
 )
 
 const (
@@ -58,9 +60,10 @@ func ListenAndServeTFTP() error {
 func handleRRQ(packet []byte, clientAddr *net.UDPAddr) {
 	parts := bytes.Split(packet[2:], []byte{0})
 	filename := parts[0]
-	slog.Debug("RRQ received", "filename", string(filename), "client", clientAddr.String())
+	slog.Debug("RRQ received", "filename", string(filename), "client", clientAddr.IP.String())
 
-	content := "set default=2\nset timeout=1\n"
+	content := grub.GetConfigByIp(clientAddr.IP.String())
+	slog.Debug("Retreived content", "content", content)
 	data := []byte(content)
 	block := 1
 	conn, err := net.DialUDP("udp", nil, clientAddr)
@@ -77,6 +80,7 @@ func handleRRQ(packet []byte, clientAddr *net.UDPAddr) {
 		}
 		blockData := data[i:end]
 		packet := createDataPacket(block, blockData)
+		slog.Debug("Sending packet", "packet", packet)
 		_, err = conn.Write(packet)
 		if err != nil {
 			slog.Error("Error sending data packet", "err", err.Error())
@@ -92,6 +96,7 @@ func handleRRQ(packet []byte, clientAddr *net.UDPAddr) {
 			slog.Error("Expected ACK packet", "receivedOpcode", ackPacket.Opcode)
 			return
 		}
+		slog.Debug("Received ACK")
 		block++
 	}
 }
