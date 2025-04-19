@@ -1,8 +1,11 @@
 package grub
 
 import (
+	"encoding/json"
 	"errors"
+	"log"
 	"log/slog"
+	"os"
 	"sync"
 	"time"
 )
@@ -13,39 +16,42 @@ const (
 )
 
 type Host struct {
-	ID string
-	IP string
-	MacAddress string
-	Configs map[string]string
+	ID string `json:"id"`
+	IP string `json:"ip"`
+	MacAddress string `json:"macAddress"`
+	Configs map[string]string `json:"configs"`
 	CurrentConfig *string
 	LastSetAt *time.Time
-	Timeout uint8
-	ResetAfterGet bool
+	Timeout uint8 `json:"timeout"`
+	ResetAfterGet bool `json:"resetAfterGet"`
 }
 
 type HostConfigs struct {
 	mu sync.Mutex
-	hosts map[string]Host
+	Hosts map[string]Host `json:"hosts"`
+}
+
+type JsonConfig struct {
+	Hosts map[string]Host `json:"hosts"`
 }
 
 var hc *HostConfigs
 
-func InitHostConfigs() {
-	hc = &HostConfigs{
-		hosts: map[string]Host{
-			"main":{
-				ID: "main",
-				IP: "127.0.0.1",
-				MacAddress: "",
-				Configs: map[string]string{
-					"arch": "set default=0\nset timeout=1\n",
-					"windows": "set timeout=1\n",
-				},
-				Timeout: 60,
-				ResetAfterGet: true,
-			},
-		},
-	}
+func InitHostConfigs(configPath string) {
+	// Parse config file
+    data, err := os.ReadFile(configPath)
+    if err != nil {
+        log.Fatalf("Error reading the config file : %s", err.Error())
+    }
+
+    var jsonConfig JsonConfig
+    err = json.Unmarshal(data, &jsonConfig)
+    if err != nil {
+			log.Fatalf("Error parsing the config file : %s", err.Error())
+    }
+
+    hc = &HostConfigs{Hosts: jsonConfig.Hosts}
+    
 }
 
 // Returns the currentConfig for the host
@@ -58,7 +64,7 @@ func GetConfigByIp(clientIp string) string {
 	var hostId string
 	hostFound := false
 
-	for id, c := range(hc.hosts) {
+	for id, c := range(hc.Hosts) {
 		if c.IP == clientIp {
 			hostFound = true
 			hostId = id
@@ -71,7 +77,7 @@ func GetConfigByIp(clientIp string) string {
 		return ""
 	}
 
-	host := hc.hosts[hostId]
+	host := hc.Hosts[hostId]
 
 	if host.CurrentConfig == nil {
 		slog.Debug("No current config, returning empty string")
@@ -86,7 +92,7 @@ func GetConfigByIp(clientIp string) string {
 		if host.ResetAfterGet {
 			host.CurrentConfig = nil
 		}
-		hc.hosts[host.ID] = host
+		hc.Hosts[host.ID] = host
 
 	}()
 
@@ -106,7 +112,7 @@ func SetCurrentConfig(hostId string, configName string) error {
 	hc.mu.Lock()
 	defer hc.mu.Unlock()
 
-	host, ok := hc.hosts[hostId]
+	host, ok := hc.Hosts[hostId]
 	if !ok {
 		return errors.New(ERR_HOST_NOT_FOUND)
 	}
@@ -120,7 +126,7 @@ func SetCurrentConfig(hostId string, configName string) error {
 	t := time.Now()
 	host.LastSetAt = &t
 
-	hc.hosts[hostId] = host
+	hc.Hosts[hostId] = host
 
 	return nil
 }
@@ -128,7 +134,7 @@ func SetCurrentConfig(hostId string, configName string) error {
 func GetHostById(hostId string) (*Host, error) {
 	hc.mu.Lock()
 	defer hc.mu.Unlock()
-	host, ok := hc.hosts[hostId]
+	host, ok := hc.Hosts[hostId]
 	if !ok {
 		return nil, errors.New(ERR_HOST_NOT_FOUND)
 	}

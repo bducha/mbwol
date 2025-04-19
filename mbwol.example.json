@@ -1,0 +1,15 @@
+{
+  "hosts": {
+    "main": {
+      "id": "main",
+      "ip": "127.0.0.1",
+      "macAddress": "",
+      "configs": {
+        "arch": "set default=0\nset timeout=1\n",
+        "windows": "set timeout=1\n"
+      },
+      "timeout": 60,
+      "resetAfterGet": true
+    }
+  }
+}
