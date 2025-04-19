@@ -25,7 +25,7 @@ func ListenAndServe() error {
 			return
 		}
 
-		err = wol.SendMagicPacket(host.MacAddress)
+		err = wol.SendMagicPacket(host.MacAddress, host.IP)
 		if err != nil {
 			http.Error(w, err.Error(), http.StatusInternalServerError)
 			return

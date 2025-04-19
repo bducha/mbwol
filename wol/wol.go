@@ -6,7 +6,7 @@ import (
 	"net"
 )
 
-func SendMagicPacket(macAddress string) error {
+func SendMagicPacket(macAddress string, ipAddress string) error {
 	mac, err := net.ParseMAC(macAddress)
 	if err != nil {
 		slog.Error("error parsing mac address", "error", err.Error(), "macAddress", macAddress)
@@ -22,10 +22,10 @@ func SendMagicPacket(macAddress string) error {
 	for i := 1; i <= 16; i++ {
 		copy(packet[i*6:], mac)
 	}
-	conn, err := net.Dial("udp", "255.255.255.255:9")
+	conn, err := net.Dial("udp", fmt.Sprintf("%s:9", ipAddress))
 	if err != nil {
-		slog.Error("error connecting on broadcast address", "error", err.Error())
-		return fmt.Errorf("error connecting on broadcast address : %s", err.Error())
+		slog.Error("error connecting on ip address", "error", err.Error())
+		return fmt.Errorf("error connecting on ip address : %s", err.Error())
 	}
 	defer conn.Close()
 	_, err = conn.Write(packet)
