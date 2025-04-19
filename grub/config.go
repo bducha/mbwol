@@ -15,6 +15,7 @@ const (
 type Host struct {
 	ID string
 	IP string
+	MacAddress string
 	Configs map[string]string
 	CurrentConfig *string
 	LastSetAt *time.Time
@@ -35,6 +36,7 @@ func InitHostConfigs() {
 			"main":{
 				ID: "main",
 				IP: "127.0.0.1",
+				MacAddress: "",
 				Configs: map[string]string{
 					"arch": "set default=0\nset timeout=1\n",
 					"windows": "set timeout=1\n",
@@ -100,11 +102,11 @@ func GetConfigByIp(clientIp string) string {
 	return ""
 }
 
-func SetCurrentConfig(id string, configName string) error {
+func SetCurrentConfig(hostId string, configName string) error {
 	hc.mu.Lock()
 	defer hc.mu.Unlock()
 
-	host, ok := hc.hosts[id]
+	host, ok := hc.hosts[hostId]
 	if !ok {
 		return errors.New(ERR_HOST_NOT_FOUND)
 	}
@@ -118,8 +120,18 @@ func SetCurrentConfig(id string, configName string) error {
 	t := time.Now()
 	host.LastSetAt = &t
 
-	hc.hosts[id] = host
+	hc.hosts[hostId] = host
 
 	return nil
+}
+
+func GetHostById(hostId string) (*Host, error) {
+	hc.mu.Lock()
+	defer hc.mu.Unlock()
+	host, ok := hc.hosts[hostId]
+	if !ok {
+		return nil, errors.New(ERR_HOST_NOT_FOUND)
+	}
+	return &host, nil
 }
 

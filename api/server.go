@@ -5,6 +5,7 @@ import (
 	"net/http"
 
 	"github.com/bducha/mbwol/grub"
+	"github.com/bducha/mbwol/wol"
 )
 
 type BootRequest struct {
@@ -18,7 +19,19 @@ func ListenAndServe() error {
 		id := r.PathValue("id")
 		config := r.PathValue("config")
 
-		err := grub.SetCurrentConfig(id, config)		
+		host, err := grub.GetHostById(id)
+		if err != nil {
+			http.Error(w, grub.ERR_HOST_NOT_FOUND, http.StatusNotFound)
+			return
+		}
+
+		err = wol.SendMagicPacket(host.MacAddress)
+		if err != nil {
+			http.Error(w, err.Error(), http.StatusInternalServerError)
+			return
+		}
+
+		err = grub.SetCurrentConfig(id, config)		
 
 		if err != nil {
 			switch (err.Error()) {
@@ -30,6 +43,7 @@ func ListenAndServe() error {
 				return
 			}
 		}
+		
 		w.WriteHeader(http.StatusOK)
 	})
 	slog.Info("API listening on port 8000")
