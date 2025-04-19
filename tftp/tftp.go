@@ -56,7 +56,6 @@ func ListenAndServeTFTP() error {
 	}
 }
 
-
 func handleRRQ(packet []byte, clientAddr *net.UDPAddr) {
 	parts := bytes.Split(packet[2:], []byte{0})
 	filename := parts[0]
@@ -73,33 +72,43 @@ func handleRRQ(packet []byte, clientAddr *net.UDPAddr) {
 	}
 	defer conn.Close()
 
-	for i:= 0; i < len(data); i += BLOCK_SIZE {
-		end := i + BLOCK_SIZE
-		if end > len(data) {
-			end = len(data)
-		}
-		blockData := data[i:end]
-		packet := createDataPacket(block, blockData)
-		slog.Debug("Sending packet", "packet", packet)
-		_, err = conn.Write(packet)
-		if err != nil {
-			slog.Error("Error sending data packet", "err", err.Error())
-			return
-		}
-
-		ackPacket, err := receivePacket(conn)
-		if err != nil {
-			slog.Error("Error receiving ACK packet:", "err", err)
-			return
-		}
-		if ackPacket.Opcode != OPCODE_ACK {
-			slog.Error("Expected ACK packet", "receivedOpcode", ackPacket.Opcode)
-			return
-		}
-		slog.Debug("Received ACK")
-		block++
-	}
+	sendData(data, conn, block)
 }
+
+func sendData(data []byte, conn *net.UDPConn, blockNumber int) {
+	start := (blockNumber - 1) * BLOCK_SIZE
+	end := start + BLOCK_SIZE
+	if end > len(data) {
+		end = len(data)
+	}
+	blockData := data[start:end]
+	packet := createDataPacket(blockNumber, blockData)
+	slog.Debug("Sending packet", "packet", packet)
+	_, err := conn.Write(packet)
+	if err != nil {
+		slog.Error("Error sending data packet", "err", err.Error())
+		return
+	}
+
+	ackPacket, err := receivePacket(conn)
+	if err != nil {
+		slog.Error("Error receiving ACK packet:", "err", err)
+		return
+	}
+	if ackPacket.Opcode != OPCODE_ACK {
+		slog.Error("Expected ACK packet", "receivedOpcode", ackPacket.Opcode)
+		return
+	}
+	slog.Debug("Received ACK")
+
+	if len(data) == end {
+		return
+	}
+	
+	sendData(data, conn, blockNumber + 1)
+}
+
+
 
 func createDataPacket(blockNumber int, data []byte) []byte {
 	opCode := []byte{0, byte(OPCODE_DATA)}

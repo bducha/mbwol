@@ -2,6 +2,7 @@ package grub
 
 import (
 	"errors"
+	"log/slog"
 	"sync"
 	"time"
 )
@@ -33,7 +34,7 @@ func InitHostConfigs() {
 		hosts: map[string]Host{
 			"main":{
 				ID: "main",
-				IP: "10.0.2.1",
+				IP: "127.0.0.1",
 				Configs: map[string]string{
 					"arch": "set default=0\nset timeout=1\n",
 					"windows": "set timeout=1\n",
@@ -63,13 +64,15 @@ func GetConfigByIp(clientIp string) string {
 		}
 	}
 
-	if  !hostFound {
+	if !hostFound {
+		slog.Debug("No config found for this host")
 		return ""
 	}
 
 	host := hc.hosts[hostId]
 
 	if host.CurrentConfig == nil {
+		slog.Debug("No current config, returning empty string")
 		return ""
 	}
 
@@ -93,6 +96,7 @@ func GetConfigByIp(clientIp string) string {
 		return configContent
 	}
 
+	slog.Debug("Timeout expired, returning empty config")
 	return ""
 }
 
