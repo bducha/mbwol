@@ -1,6 +1,7 @@
 package api
 
 import (
+	"fmt"
 	"log/slog"
 	"net/http"
 
@@ -12,25 +13,26 @@ type BootRequest struct {
 	ConfigName string `json:"configName"`
 }
 
-func ListenAndServe() error {
+func ListenAndServe(port int) error {
 	mux := http.NewServeMux()
 
 	mux.HandleFunc("POST /boot/{id}/{config}", func(w http.ResponseWriter, r *http.Request) {
 		id := r.PathValue("id")
 		config := r.PathValue("config")
-
+		slog.Debug("Received boot request", "id", id, "config", config)
 		host, err := grub.GetHostById(id)
 		if err != nil {
 			http.Error(w, grub.ERR_HOST_NOT_FOUND, http.StatusNotFound)
 			return
 		}
 
+		slog.Debug("Booting host", "host", host)
 		err = wol.SendMagicPacket(host.MacAddress, host.IP)
 		if err != nil {
 			http.Error(w, err.Error(), http.StatusInternalServerError)
 			return
 		}
-
+		slog.Debug("Setting host config", "config", config)
 		err = grub.SetCurrentConfig(id, config)		
 
 		if err != nil {
@@ -46,6 +48,6 @@ func ListenAndServe() error {
 		
 		w.WriteHeader(http.StatusOK)
 	})
-	slog.Info("API listening on port 8000")
-	return http.ListenAndServe(":8000", mux)
+	slog.Info(fmt.Sprintf("API listening on port %d", port))
+	return http.ListenAndServe(fmt.Sprintf(":%d", port), mux)
 }
