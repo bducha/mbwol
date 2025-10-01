@@ -1,0 +1,8 @@
+services:
+  mbwol:
+    image: ghcr.io/bducha/mbwol
+    container_name: mbwol
+    restart: unless-stopped
+    network_mode: host
+    volumes:
+      - ./mbwol.json:/app/mbwol.json
