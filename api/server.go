@@ -27,13 +27,17 @@ func ListenAndServe(port int) error {
 		}
 
 		slog.Debug("Booting host", "host", host)
-		err = wol.SendMagicPacket(host.MacAddress, host.IP)
+		broadcastIp := "255.255.255.255"
+		if host.BroadcastIP != nil {
+			broadcastIp = *host.BroadcastIP
+		}
+		err = wol.SendMagicPacket(host.MacAddress, broadcastIp)
 		if err != nil {
 			http.Error(w, err.Error(), http.StatusInternalServerError)
 			return
 		}
 		slog.Debug("Setting host config", "config", config)
-		err = grub.SetCurrentConfig(id, config)		
+		err = grub.SetCurrentConfig(id, config)
 
 		if err != nil {
 			switch (err.Error()) {

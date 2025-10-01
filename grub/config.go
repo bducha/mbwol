@@ -18,6 +18,7 @@ const (
 type Host struct {
 	ID string `json:"id"`
 	IP string `json:"ip"`
+	BroadcastIP *string `json:"broadcastIp,omitempty"`
 	MacAddress string `json:"macAddress"`
 	Configs map[string]string `json:"configs"`
 	CurrentConfig *string
