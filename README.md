@@ -208,4 +208,12 @@ curl http://10.0.1.1:8000/boot/desktop/windows
       * Verify that the target PC can ping the `mbwol` server.
       * Check for firewalls on the server machine that might be blocking TFTP traffic (usually on UDP port 69).
       * Ensure the `ip` in `mbwol.json` matches the IP your computer gets in GRUB.
-      
+
+-----
+
+## Contributing
+
+Every contributions are welcome !
+
+You can submit issues to suggest new features, or report bugs. 
+If there is an issue that you want to work on, make sure to add a comment to inform everyone. You can then fork the repository and make a pull request when you're done.
