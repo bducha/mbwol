@@ -181,10 +181,10 @@ Let's use the example configuration from above. Your `mbwol` server is at `10.0.
 
 **Goal:** Wake the computer and boot into Windows.
 
-**Action:** Make an HTTP GET request from any device on your network (e.g., your phone, laptop, or a script).
+**Action:** Make an HTTP POST request from any device on your network (e.g., your phone, laptop, or a script).
 
 ```bash
-curl http://10.0.1.1:8000/boot/desktop/windows
+curl -X POST http://10.0.1.1:8000/boot/desktop/windows
 ```
 
 *(Assuming `mbwol` is running on the default port `8000`).*
