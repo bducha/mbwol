@@ -31,9 +31,9 @@ type TFTPPacket struct {
 }
 
 type Connection struct {
-	Conn *net.UDPConn
+	Conn      *net.UDPConn
 	BlockSize int
-	DataLen int64
+	DataLen   int64
 }
 
 func ListenAndServeTFTP() error {
@@ -86,7 +86,7 @@ func handleRRQ(packet []byte, clientAddr *net.UDPAddr) {
 	conn := Connection{
 		Conn:      udpConn,
 		BlockSize: BLOCK_SIZE,
-		DataLen: 		int64(len(data)),
+		DataLen:   int64(len(data)),
 	}
 	if err != nil {
 		slog.Error("Error dialing UDP", "err", err.Error(), "client", clientAddr.String())
@@ -115,20 +115,22 @@ func handleOptions(options [][]byte, conn *Connection) error {
 	oackPacket := []byte{0, byte(OPCODE_OACK)}
 
 	for i, option := range options {
-		if i%2 == 0 && string(option) != ""{
+		if i%2 == 0 && string(option) != "" {
 			slog.Debug("Option", "option", string(option))
 			switch string(option) {
-				case "tsize":
-					slog.Debug("Tsize option", "tsize", string(options[i+1]))
-					opts["tsize"] = strconv.FormatInt(conn.DataLen, 10)
-			}
-			if string(option) == "blksize" {
-				blockSize := options[i+1]
-				slog.Debug("Block size option", "blockSize", string(blockSize))
-				opts["blksize"] = string(blockSize)
-				
-				size,_ := binary.Uvarint(blockSize)
-				conn.BlockSize = int(size)
+			case "tsize":
+				slog.Debug("Tsize option", "tsize", string(options[i+1]))
+				opts["tsize"] = strconv.FormatInt(conn.DataLen, 10)
+			case "blksize":
+				blockSizeStr := string(options[i+1])
+				slog.Debug("Block size option", "blockSize", blockSizeStr)
+				size, err := strconv.Atoi(blockSizeStr)
+				if err != nil {
+					slog.Error("Invalid blksize value", "value", blockSizeStr, "err", err)
+				} else {
+					conn.BlockSize = size
+					opts["blksize"] = blockSizeStr
+				}
 			}
 		}
 		// Ignore other options
@@ -143,7 +145,7 @@ func handleOptions(options [][]byte, conn *Connection) error {
 
 	_, err := conn.Conn.Write(oackPacket)
 	if err != nil {
-		slog.Error("Error sending data packet", "err", err.Error())
+		slog.Error("Error sending OACK packet", "err", err.Error())
 		return err
 	}
 
@@ -154,12 +156,11 @@ func handleOptions(options [][]byte, conn *Connection) error {
 	}
 	if ackPacket.Opcode != OPCODE_ACK {
 		slog.Error("Expected ACK packet", "receivedOpcode", ackPacket.Opcode)
-		return err
+		return fmt.Errorf("expected ACK packet, received opcode %d", ackPacket.Opcode)
 	}
 	slog.Debug("Received ACK")
 	return nil
 }
-
 
 func sendData(data []byte, conn *Connection, blockNumber int) error {
 	start := (blockNumber - 1) * conn.BlockSize
@@ -183,7 +184,7 @@ func sendData(data []byte, conn *Connection, blockNumber int) error {
 	}
 	if ackPacket.Opcode != OPCODE_ACK {
 		slog.Error("Expected ACK packet", "receivedOpcode", ackPacket.Opcode)
-		return err
+		return fmt.Errorf("expected ACK packet, received opcode %d", ackPacket.Opcode)
 	}
 	slog.Debug("Received ACK")
 
@@ -191,10 +192,9 @@ func sendData(data []byte, conn *Connection, blockNumber int) error {
 		return nil
 	}
 
-	next, _ := binary.Uvarint(ackPacket.Payload[0:1])
+	next := binary.BigEndian.Uint16(ackPacket.Payload[0:2])
 
-	sendData(data, conn, int(next))
-	return nil
+	return sendData(data, conn, int(next))
 }
 
 func createDataPacket(blockNumber int, data []byte) []byte {
